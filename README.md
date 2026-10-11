@@ -78,7 +78,6 @@ This runs both Vite (frontend on port 5173) and Convex (backend) concurrently.
 ├── src/
 │   ├── components/     # React components (ContentCard, FilterBar, etc.)
 │   ├── pages/          # Home and Admin pages
-│   ├── hooks/          # Custom React hooks
 │   └── main.tsx        # App entry with providers
 ├── convex/
 │   ├── model/          # Data layer (videos, articles, projects)
