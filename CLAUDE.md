@@ -47,7 +47,8 @@ This is a content aggregation app built with **React + Vite** (frontend) and **C
 
 4. **API Layer** (`convex/videos.ts`, `convex/articles.ts`, `convex/projects.ts`):
    - Public queries: `list` (filters to show only visible items)
-   - Internal mutations: `add`, `upsert` (used by refresh actions)
+   - Internal mutations: `upsert` (used by refresh actions) and `add` (for tests or `npx convex run`)
+   - Never export an unauthenticated public `mutation` or `action`: anyone with the deployment URL can call it. Use `internalMutation`/`internalAction`, or take the admin session `token` and call `requireAuth`. `convex/__tests__/publicApi.test.ts` enforces this.
 
 5. **Admin** (`convex/admin.ts`):
    - Protected by email check (`requireAuth` helper)

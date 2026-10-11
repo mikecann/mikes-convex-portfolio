@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAllCodeContributions,
@@ -28,8 +28,8 @@ export const upsert = internalMutation({
   },
 });
 
-// Public mutation for testing purposes
-export const add = mutation({
+// Internal so only tests, other functions and `npx convex run` can call it
+export const add = internalMutation({
   args: {
     sha: v.string(),
     shortSha: v.string(),

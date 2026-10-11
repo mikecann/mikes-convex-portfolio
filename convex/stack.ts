@@ -1,6 +1,6 @@
 "use node";
 
-import { action, internalAction } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { extractProjectLinks } from "./model/projects";
 import { extractProjectsWithLLM } from "./lib/extractProjects";
@@ -269,8 +269,9 @@ export const refresh = internalAction({
   },
 });
 
-// Manual trigger for testing
-export const manualRefresh = action({
+// Manual refresh, internal so it can't be triggered from the public API.
+// Run with `npx convex run stack:manualRefresh`; the admin page uses admin.triggerStackRefresh.
+export const manualRefresh = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; articlesProcessed?: number; error?: string }> => {
     return await ctx.runAction(internal.stack.refresh, {});

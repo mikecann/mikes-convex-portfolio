@@ -1,6 +1,6 @@
 "use node";
 
-import { action, internalAction } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -432,8 +432,9 @@ export const refreshLatest = internalAction({
   },
 });
 
-// Manual trigger for testing (full refresh)
-export const manualRefresh = action({
+// Manual full refresh, internal so it can't be triggered from the public API.
+// Run with `npx convex run youtube:manualRefresh`; the admin page uses admin.triggerYouTubeRefresh.
+export const manualRefresh = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; videosProcessed?: number; error?: string }> => {
     return await ctx.runAction(internal.youtube.refreshAll, {});
@@ -553,8 +554,9 @@ export const batchExtractProjects = internalAction({
   },
 });
 
-// Manual trigger for batch extraction (admin use)
-export const manualBatchExtract = action({
+// Manual trigger for batch extraction (admin use), internal because it spends
+// Anthropic credit. Run with `npx convex run youtube:manualBatchExtract`.
+export const manualBatchExtract = internalAction({
   args: {},
   handler: async (ctx): Promise<{ videosProcessed: number; videosWithProjects: number; totalProjects: number }> => {
     return await ctx.runAction(internal.youtube.batchExtractProjects, {});

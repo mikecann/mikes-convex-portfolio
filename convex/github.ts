@@ -1,6 +1,6 @@
 "use node";
 
-import { action, internalAction } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { cleanCommitTitle } from "./model/codeContributions";
 
@@ -92,7 +92,9 @@ export const refreshCodeContributions = internalAction({
   },
 });
 
-export const manualRefreshCodeContributions = action({
+// Manual refresh, internal so it can't be triggered from the public API.
+// Run with `npx convex run github:manualRefreshCodeContributions`; the admin page uses admin.triggerGitHubRefresh.
+export const manualRefreshCodeContributions = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; commitsProcessed: number }> => {
     return await ctx.runAction(internal.github.refreshCodeContributions, {});

@@ -1,4 +1,4 @@
-import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import { query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getVisibleProjects, getAllProjects, upsertProject } from "./model/projects";
 
@@ -26,8 +26,8 @@ export const upsert = internalMutation({
   },
 });
 
-// Public mutation for testing purposes
-export const add = mutation({
+// Internal so only tests, other functions and `npx convex run` can call it
+export const add = internalMutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
