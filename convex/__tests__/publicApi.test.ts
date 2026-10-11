@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 // spends third-party API quota must be internal, or check the admin session
 // token. Adding to this list means confirming the new function is protected.
 const ALLOWED_PUBLIC_WRITES = [
+  "admin:askJevAboutUndecided",
   "admin:clearAllProjects",
   "admin:deleteProject",
   "admin:sendTestEmail",
