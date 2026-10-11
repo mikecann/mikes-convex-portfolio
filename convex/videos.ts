@@ -1,6 +1,5 @@
 import {
   query,
-  mutation,
   internalMutation,
   internalQuery,
 } from "./_generated/server";
@@ -89,8 +88,8 @@ export const upsert = internalMutation({
   },
 });
 
-// Public mutation for testing purposes
-export const add = mutation({
+// Internal so only tests, other functions and `npx convex run` can call it
+export const add = internalMutation({
   args: {
     youtubeId: v.string(),
     title: v.string(),
