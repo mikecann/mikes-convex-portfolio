@@ -431,6 +431,7 @@ function ContentManager({
       isMikes?: "undecided" | "mine" | "notMine";
       ownershipDecidedBy?: "mike" | "jev";
       jevProbabilityMine?: number;
+      thumbnailCapProbability?: number;
       thumbnailUrl?: string;
       publishedAt: string;
     };
@@ -603,13 +604,19 @@ function VideoCard({
     isMikes?: "undecided" | "mine" | "notMine";
     ownershipDecidedBy?: "mike" | "jev";
     jevProbabilityMine?: number;
+    thumbnailCapProbability?: number;
     thumbnailUrl?: string;
   };
   onSetOwnership: (id: string, isMikes: "mine" | "notMine") => void;
 }) {
   const title = item.title || "Untitled";
   const status = item.isMikes ?? "undecided";
-  const jevNote = describeJevNote(status, item.ownershipDecidedBy, item.jevProbabilityMine);
+  const jevNote = describeJevNote(
+    status,
+    item.ownershipDecidedBy,
+    item.jevProbabilityMine,
+    item.thumbnailCapProbability
+  );
 
   const statusColors = {
     undecided: "bg-yellow-600",
@@ -691,15 +698,17 @@ function VideoCard({
 function describeJevNote(
   status: "undecided" | "mine" | "notMine",
   decidedBy?: "mike" | "jev",
-  pMine?: number
+  pMine?: number,
+  pCap?: number
 ): string | null {
   if (pMine === undefined) return null;
   const percent = (p: number) => `${Math.round(p * 100)}%`;
   if (status === "undecided") return `Jev wasn't sure: ${percent(pMine)} yours`;
   if (decidedBy !== "jev") return null;
-  return status === "mine"
-    ? `Jev is ${percent(pMine)} sure it's yours`
-    : `Jev is ${percent(1 - pMine)} sure it's not yours`;
+  if (status === "notMine") return `Jev is ${percent(1 - pMine)} sure it's not yours`;
+  return pMine < 0.9 && pCap !== undefined
+    ? `Jev is ${percent(pMine)} sure it's yours, and your cap is on the thumbnail`
+    : `Jev is ${percent(pMine)} sure it's yours`;
 }
 
 function SimpleContentCard({

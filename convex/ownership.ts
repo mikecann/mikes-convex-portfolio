@@ -9,10 +9,12 @@ import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { setVideoOwnership } from "./model/videos";
 import {
+  buildCapCheckRequest,
   buildOwnershipRequest,
   decideOwnership,
+  shouldCheckThumbnail,
   EXAMPLES_PER_SIDE,
-  JEV_DECISIONS_URL,
+  DECISIONS_URL,
   probabilityMine,
   type JevChoiceAnswer,
   type OwnershipExample,
@@ -60,9 +62,16 @@ export const judgeVideos = internalAction({
       if (!video || !isUndecided(video)) continue;
       try {
         const pMine = await askJev(video, examples);
+        const capProbability = shouldCheckThumbnail(pMine)
+          ? await checkThumbnailForCap(video.thumbnailUrl).catch((error) => {
+              console.error(`Clef couldn't check the thumbnail of "${video.title}":`, error);
+              return undefined;
+            })
+          : undefined;
         await ctx.runMutation(internal.ownership.applyJevVerdict, {
           id,
           probabilityMine: pMine,
+          capProbability,
         });
       } catch (error) {
         // Leave it undecided so it still shows up in the email for Mike.
@@ -81,14 +90,21 @@ export const judgeVideos = internalAction({
 });
 
 export const applyJevVerdict = internalMutation({
-  args: { id: v.id("videos"), probabilityMine: v.number() },
-  handler: async (ctx, { id, probabilityMine }) => {
+  args: {
+    id: v.id("videos"),
+    probabilityMine: v.number(),
+    capProbability: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, probabilityMine, capProbability }) => {
     const video = await ctx.db.get(id);
     // Mike may have sorted it while Jev was thinking. His decision wins.
     if (!video || !isUndecided(video)) return null;
 
-    await ctx.db.patch(id, { jevProbabilityMine: probabilityMine });
-    const decision = decideOwnership(probabilityMine);
+    await ctx.db.patch(id, {
+      jevProbabilityMine: probabilityMine,
+      thumbnailCapProbability: capProbability,
+    });
+    const decision = decideOwnership(probabilityMine, capProbability);
     if (decision !== "undecided") {
       await setVideoOwnership(ctx, video, decision, "jev");
     }
@@ -96,21 +112,39 @@ export const applyJevVerdict = internalMutation({
   },
 });
 
-async function askJev(
-  video: VideoForJudging,
-  examples: OwnershipExample[]
-): Promise<number> {
-  const res = await fetch(JEV_DECISIONS_URL, {
+async function askGateway(body: object) {
+  const res = await fetch(DECISIONS_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${await getServiceToken("ai-gateway")}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildOwnershipRequest(video, examples)),
+    body: JSON.stringify(body),
   });
-  const body = await res.json();
+  const json = await res.json();
   if (!res.ok) {
-    throw new Error(`Jev request failed (${res.status}): ${JSON.stringify(body)}`);
+    throw new Error(`Decision request failed (${res.status}): ${JSON.stringify(json)}`);
   }
+  return json;
+}
+
+async function checkThumbnailForCap(thumbnailUrl: string): Promise<number> {
+  const res = await fetch(thumbnailUrl);
+  if (!res.ok) throw new Error(`Thumbnail fetch failed (${res.status})`);
+  const type = res.headers.get("content-type") ?? "image/jpeg";
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  const body = await askGateway(buildCapCheckRequest(`data:${type};base64,${btoa(binary)}`));
+  return body.answers.convexCap.noul as number;
+}
+
+async function askJev(
+  video: VideoForJudging,
+  examples: OwnershipExample[]
+): Promise<number> {
+  const body = await askGateway(buildOwnershipRequest(video, examples));
   return probabilityMine(body.answers.owner as JevChoiceAnswer);
 }

@@ -5,8 +5,10 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import {
   buildOwnershipRequest,
+  buildCapCheckRequest,
   decideOwnership,
   probabilityMine,
+  shouldCheckThumbnail,
   uploadFingerprint,
   type OwnershipExample,
 } from "../lib/ownershipJudge";
@@ -54,6 +56,17 @@ describe("deciding ownership from Jev's probability", () => {
     expect(decideOwnership(0.11)).toBe("undecided");
   });
 
+  it("lets Mike's Convex cap on the thumbnail tip a leaning-mine video to mine", () => {
+    expect(decideOwnership(0.7, 0.98)).toBe("mine");
+    expect(decideOwnership(0.7, 0.9)).toBe("undecided");
+    expect(decideOwnership(0.7)).toBe("undecided");
+    // The cap never overrides Jev leaning the other way
+    expect(decideOwnership(0.4, 0.99)).toBe("undecided");
+    expect(shouldCheckThumbnail(0.7)).toBe(true);
+    expect(shouldCheckThumbnail(0.95)).toBe(false);
+    expect(shouldCheckThumbnail(0.3)).toBe(false);
+  });
+
   it("trusts Jev's probabilities over its pick when they disagree", () => {
     expect(probabilityMine({ choice: "notMine", probabilities: { mine: 0.6, notMine: 0.4 } })).toBe(0.6);
   });
@@ -86,6 +99,13 @@ describe("the request sent to Jev", () => {
     expect(body.state.video).toMatchObject({ title: "New video", length: "1m 5s", description: "(no description)", publishedAt: "2026-10-10" });
   });
 
+  it("sends the thumbnail to Clef inside state, the way the gateway wants images", () => {
+    const body = buildCapCheckRequest("data:image/jpeg;base64,AAAA");
+    expect(body.model).toBe("cloudflare/clef");
+    expect(body.state[0]).toEqual({ type: "image_url", image_url: { url: "data:image/jpeg;base64,AAAA" } });
+    expect(body.questions.convexCap.type).toBe("noul");
+  });
+
   it("trims long descriptions", () => {
     const body = buildOwnershipRequest(
       { title: "Long", description: "x".repeat(5000), publishedAt: "2026-10-10T00:00:00Z" },
@@ -112,6 +132,16 @@ describe("applying Jev's verdict", () => {
     expect(await getVideo(t, id)).toMatchObject({ isMikes: "mine", ownershipDecidedBy: "jev", jevProbabilityMine: 0.96 });
     expect(await t.query(api.videos.list)).toHaveLength(1);
     expect((await t.query(api.videos.stats)).videoCount).toBe(1);
+  });
+
+  it("marks it Mike's when Jev leans mine and his cap is on the thumbnail", async () => {
+    const t = setup();
+    const id = await addUndecidedVideo(t);
+
+    const decision = await t.mutation(internal.ownership.applyJevVerdict, { id, probabilityMine: 0.72, capProbability: 0.99 });
+
+    expect(decision).toBe("mine");
+    expect(await getVideo(t, id)).toMatchObject({ isMikes: "mine", ownershipDecidedBy: "jev", thumbnailCapProbability: 0.99 });
   });
 
   it("hides a new video when Jev is sure it isn't Mike's", async () => {
@@ -243,6 +273,9 @@ describe("the moderation email", () => {
       "Needs you: Jev was only 62% sure it's yours"
     );
     expect(describeVerdict({ ...base, isMikes: "undecided" })).toBe("Needs you: Jev couldn't check it");
+    expect(
+      describeVerdict({ ...base, isMikes: "mine", ownershipDecidedBy: "jev", jevProbabilityMine: 0.72, thumbnailCapProbability: 0.99 })
+    ).toBe("Jev marked it yours (72% sure, and your Convex cap is on the thumbnail)");
   });
 
   it("only asks Mike to act when something is waiting for him", () => {

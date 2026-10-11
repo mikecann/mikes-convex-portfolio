@@ -4,7 +4,7 @@ import { parseDurationToSeconds } from "./videoUtils";
 // Convex channel video is one of Mike's. Pure helpers live here so they can be tested.
 
 export const JEV_MODEL = "typesafe/jev-1.13";
-export const JEV_DECISIONS_URL = "https://ai-gateway.convex.dev/alpha/decisions";
+export const DECISIONS_URL = "https://ai-gateway.convex.dev/alpha/decisions";
 
 // Jev only auto-decides when it is at least this sure. Anything in between stays
 // "undecided" and lands in the moderation email for Mike. Tuned against Mike's
@@ -13,6 +13,12 @@ export const AUTO_DECIDE_THRESHOLD = 0.9;
 
 // How many of Mike's latest decisions of each kind Jev sees as examples.
 export const EXAMPLES_PER_SIDE = 25;
+
+// When Jev leans "mine" but isn't sure, Cloudflare's Clef (a decision model that can see
+// images) checks the thumbnail for Mike's black Convex cap. Only a near-certain yes
+// tips it to "mine". See docs/ownership-backtest.md.
+export const CAP_CHECK_MODEL = "cloudflare/clef";
+export const CAP_THRESHOLD = 0.97;
 
 const MAX_DESCRIPTION_CHARS = 2500;
 
@@ -135,9 +141,33 @@ export function probabilityMine(answer: JevChoiceAnswer): number {
 
 export function decideOwnership(
   pMine: number,
-  threshold = AUTO_DECIDE_THRESHOLD
+  capProbability?: number
 ): Ownership | "undecided" {
-  if (pMine >= threshold) return "mine";
-  if (1 - pMine >= threshold) return "notMine";
+  if (pMine >= AUTO_DECIDE_THRESHOLD) return "mine";
+  if (1 - pMine >= AUTO_DECIDE_THRESHOLD) return "notMine";
+  if (shouldCheckThumbnail(pMine) && (capProbability ?? 0) >= CAP_THRESHOLD) return "mine";
   return "undecided";
+}
+
+// Only worth looking at the thumbnail when Jev leans "mine" but couldn't decide.
+export function shouldCheckThumbnail(pMine: number): boolean {
+  return pMine >= 0.5 && pMine < AUTO_DECIDE_THRESHOLD;
+}
+
+// The Convex AI Gateway takes images as OpenAI-style parts inside `state`.
+export function buildCapCheckRequest(thumbnailDataUrl: string) {
+  return {
+    model: CAP_CHECK_MODEL,
+    state: [
+      { type: "image_url", image_url: { url: thumbnailDataUrl } },
+      { type: "text", text: "The image is a YouTube thumbnail." },
+    ],
+    questions: {
+      convexCap: {
+        type: "noul",
+        instructions:
+          "Is someone in this image wearing a black baseball cap with the white Convex logo on it?",
+      },
+    },
+  };
 }

@@ -11,6 +11,7 @@ export interface VideoForNotification {
   isMikes?: "undecided" | "mine" | "notMine";
   ownershipDecidedBy?: "mike" | "jev";
   jevProbabilityMine?: number;
+  thumbnailCapProbability?: number;
 }
 
 export const needsMike = (video: VideoForNotification) =>
@@ -27,9 +28,10 @@ export function describeVerdict(video: VideoForNotification): string {
   }
   const yours = video.isMikes === "mine";
   if (video.ownershipDecidedBy === "jev" && pMine !== undefined) {
-    return yours
-      ? `Jev marked it yours (${percent(pMine)} sure)`
-      : `Jev marked it not yours (${percent(1 - pMine)} sure)`;
+    if (!yours) return `Jev marked it not yours (${percent(1 - pMine)} sure)`;
+    return pMine < 0.9 && video.thumbnailCapProbability !== undefined
+      ? `Jev marked it yours (${percent(pMine)} sure, and your Convex cap is on the thumbnail)`
+      : `Jev marked it yours (${percent(pMine)} sure)`;
   }
   return yours ? "You marked it yours" : "You marked it not yours";
 }

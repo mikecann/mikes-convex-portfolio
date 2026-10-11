@@ -28,6 +28,9 @@ export default defineSchema({
     ownershipDecidedBy: v.optional(v.union(v.literal("mike"), v.literal("jev"))),
     // Jev's probability that the video is Mike's, kept even when it was too unsure to decide.
     jevProbabilityMine: v.optional(v.number()),
+    // Clef's probability that Mike's black Convex cap is on the thumbnail. Only checked
+    // when Jev leans "mine" but isn't sure.
+    thumbnailCapProbability: v.optional(v.number()),
     // YouTube upload settings. Each uploader's defaults differ, so Jev uses them as a fingerprint.
     categoryId: v.optional(v.string()),
     defaultLanguage: v.optional(v.string()),
