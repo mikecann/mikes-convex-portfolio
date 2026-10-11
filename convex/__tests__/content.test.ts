@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 
 const modules = import.meta.glob("../**/*.ts");
@@ -15,7 +15,7 @@ describe("videos", () => {
   it("returns videos after adding them", async () => {
     const t = convexTest(schema, modules);
 
-    const result = await t.mutation(api.videos.add, {
+    const result = await t.mutation(internal.videos.add, {
       youtubeId: "abc123",
       title: "Test Video",
       description: "A test video description",
@@ -37,7 +37,7 @@ describe("videos", () => {
   it("upserts video with same youtubeId", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.videos.add, {
+    await t.mutation(internal.videos.add, {
       youtubeId: "abc123",
       title: "Original Title",
       description: "Original description",
@@ -45,7 +45,7 @@ describe("videos", () => {
       publishedAt: "2024-01-15T10:00:00Z",
     });
 
-    const result = await t.mutation(api.videos.add, {
+    const result = await t.mutation(internal.videos.add, {
       youtubeId: "abc123",
       title: "Updated Title",
       description: "Updated description",
@@ -72,7 +72,7 @@ describe("articles", () => {
   it("returns articles after adding them", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.articles.add, {
+    await t.mutation(internal.articles.add, {
       slug: "test-article",
       title: "Test Article",
       description: "A test article description",
@@ -90,7 +90,7 @@ describe("articles", () => {
   it("upserts article with same slug", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.articles.add, {
+    await t.mutation(internal.articles.add, {
       slug: "test-article",
       title: "Original Title",
       description: "Original description",
@@ -98,7 +98,7 @@ describe("articles", () => {
       url: "https://stack.convex.dev/test-article",
     });
 
-    await t.mutation(api.articles.add, {
+    await t.mutation(internal.articles.add, {
       slug: "test-article",
       title: "Updated Title",
       description: "Updated description",
@@ -122,7 +122,7 @@ describe("projects", () => {
   it("returns projects after adding them", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.projects.add, {
+    await t.mutation(internal.projects.add, {
       name: "My Project",
       description: "A cool project",
       sourceUrl: "https://github.com/user/project",
@@ -150,7 +150,7 @@ describe("code contributions", () => {
   it("returns code contributions after adding them", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.codeContributions.add, {
+    await t.mutation(internal.codeContributions.add, {
       sha: "abcdef1234567890",
       shortSha: "abcdef1",
       title: "Use copy mode for Convex AI skill installs",
@@ -172,7 +172,7 @@ describe("code contributions", () => {
   it("upserts code contribution with same sha", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.codeContributions.add, {
+    await t.mutation(internal.codeContributions.add, {
       sha: "abcdef1234567890",
       shortSha: "abcdef1",
       title: "Original title",
@@ -183,7 +183,7 @@ describe("code contributions", () => {
       authorName: "Mike Cann",
     });
 
-    await t.mutation(api.codeContributions.add, {
+    await t.mutation(internal.codeContributions.add, {
       sha: "abcdef1234567890",
       shortSha: "abcdef1",
       title: "Updated title",

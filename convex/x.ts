@@ -1,6 +1,6 @@
 "use node";
 
-import { action, internalAction } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 interface XTweetResponse {
@@ -125,8 +125,9 @@ export const refresh = internalAction({
   },
 });
 
-// Manual trigger for testing
-export const manualRefresh = action({
+// Manual refresh, internal so it can't be triggered from the public API.
+// Run with `npx convex run x:manualRefresh`; the admin page uses admin.triggerXRefresh.
+export const manualRefresh = internalAction({
   args: {},
   handler: async (
     ctx
@@ -135,8 +136,9 @@ export const manualRefresh = action({
   },
 });
 
-// Get X user ID from username
-export const getUserId = action({
+// Get X user ID from username. Internal because it spends X API quota.
+// Run with `npx convex run x:getUserId`.
+export const getUserId = internalAction({
   args: {},
   handler: async (ctx) => {
     const bearerToken = process.env.X_BEARER_TOKEN;
