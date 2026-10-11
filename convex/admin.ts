@@ -1,6 +1,7 @@
 import { mutation, query, action, internalQuery, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { setVideoOwnership } from "./model/videos";
 
 const ADMIN_EMAIL = "mike.cann@gmail.com";
 
@@ -136,20 +137,30 @@ export const setVideoIsMikes = mutation({
     const video = await ctx.db.get(id);
     if (!video) throw new Error("Video not found");
 
-    const previousStatus = video.isMikes;
-    await ctx.db.patch(id, { isMikes });
-
-    // If changing to "mine", schedule project extraction
-    if (isMikes === "mine" && previousStatus !== "mine") {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.youtube.extractProjectsForVideo,
-        { youtubeId: video.youtubeId }
-      );
+    const { becameMine } = await setVideoOwnership(ctx, video, isMikes, "mike");
+    if (becameMine) {
       return { success: true, message: "Video marked as mine, project extraction scheduled" };
     }
 
     return { success: true, message: `Video marked as ${isMikes}` };
+  },
+});
+
+// Ask Jev to sort every video that is still undecided (admin only)
+export const askJevAboutUndecided = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    await requireAuth(ctx, token);
+    const undecided = await ctx.db
+      .query("videos")
+      .withIndex("by_isMikes", (q) => q.eq("isMikes", "undecided"))
+      .collect();
+    if (undecided.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.ownership.judgeVideos, {
+        videoIds: undecided.map((video) => video._id),
+      });
+    }
+    return { success: true, message: `Asked Jev about ${undecided.length} undecided videos` };
   },
 });
 

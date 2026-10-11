@@ -79,6 +79,10 @@ export const upsert = internalMutation({
     likeCount: v.optional(v.number()),
     commentCount: v.optional(v.number()),
     duration: v.optional(v.string()),
+    categoryId: v.optional(v.string()),
+    defaultLanguage: v.optional(v.string()),
+    defaultAudioLanguage: v.optional(v.string()),
+    wasLiveStream: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await upsertVideo(ctx, args);

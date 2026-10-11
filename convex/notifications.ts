@@ -5,7 +5,12 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Resend } from "@convex-dev/resend";
 import { components } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import {
+  describeVerdict,
+  moderationSubject,
+  needsMike,
+  type VideoForNotification,
+} from "./lib/moderationCopy";
 
 const resend = new Resend(components.resend, {
   testMode: false,
@@ -13,14 +18,6 @@ const resend = new Resend(components.resend, {
 
 const ADMIN_EMAIL = "mike.cann@gmail.com";
 const FROM_EMAIL = "Convex Portfolio <convex-portfolio@mikecann.blog>";
-
-interface VideoForNotification {
-  _id: Id<"videos">;
-  title: string;
-  thumbnailUrl: string;
-  youtubeId: string;
-  publishedAt: string;
-}
 
 export const sendModerationNotification = internalAction({
   args: {
@@ -45,13 +42,15 @@ export const sendModerationNotification = internalAction({
       return { sent: false, reason: "No videos found" };
     }
 
+    // Videos waiting for Mike go first
+    videos.sort((a, b) => Number(needsMike(b)) - Number(needsMike(a)));
     const html = generateModerationEmailHtml(videos);
 
     try {
       await resend.sendEmail(ctx, {
         from: FROM_EMAIL,
         to: ADMIN_EMAIL,
-        subject: `${videos.length} New YouTube Video${videos.length > 1 ? "s" : ""} Need Moderation`,
+        subject: moderationSubject(videos),
         html,
       });
 
@@ -68,6 +67,7 @@ export const sendModerationNotification = internalAction({
 });
 
 function generateModerationEmailHtml(videos: VideoForNotification[]): string {
+  const waiting = videos.filter(needsMike).length;
   const adminUrl = process.env.SITE_URL
     ? `${process.env.SITE_URL}/admin`
     : "https://mikes-convex-portfolio.mikeysee.workers.dev/admin";
@@ -96,7 +96,10 @@ function generateModerationEmailHtml(videos: VideoForNotification[]): string {
                 >
                   ${escapeHtml(video.title)}
                 </a>
-                <p style="color: #9ca3af; font-size: 12px; margin: 8px 0 0 0;">
+                <p style="color: ${needsMike(video) ? "#facc15" : "#9ca3af"}; font-size: 13px; margin: 8px 0 0 0;">
+                  ${escapeHtml(describeVerdict(video))}
+                </p>
+                <p style="color: #9ca3af; font-size: 12px; margin: 4px 0 0 0;">
                   Published: ${new Date(video.publishedAt).toLocaleDateString()}
                 </p>
               </td>
@@ -124,10 +127,14 @@ function generateModerationEmailHtml(videos: VideoForNotification[]): string {
               <tr>
                 <td style="background-color: #111111; padding: 24px; border-radius: 8px 8px 0 0; border-bottom: 1px solid #333;">
                   <h1 style="margin: 0; color: #f97316; font-size: 24px; font-weight: 700;">
-                    New Videos Need Moderation
+                    ${escapeHtml(moderationSubject(videos))}
                   </h1>
                   <p style="margin: 8px 0 0 0; color: #9ca3af; font-size: 14px;">
-                    ${videos.length} new video${videos.length > 1 ? "s have" : " has"} been fetched and ${videos.length > 1 ? "need" : "needs"} your review.
+                    ${
+                      waiting > 0
+                        ? "Jev wasn't sure about the ones in yellow, so they're waiting for you in the admin panel."
+                        : "Jev was sure about all of these, so there's nothing to do unless it got one wrong."
+                    }
                   </p>
                 </td>
               </tr>
@@ -148,7 +155,7 @@ function generateModerationEmailHtml(videos: VideoForNotification[]): string {
                     href="${adminUrl}"
                     style="display: inline-block; background-color: #f97316; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 14px;"
                   >
-                    Review in Admin Panel
+                    ${waiting > 0 ? "Review in Admin Panel" : "Open Admin Panel"}
                   </a>
                 </td>
               </tr>

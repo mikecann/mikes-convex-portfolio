@@ -12,7 +12,8 @@ A content aggregation app that showcases all the content I've created for [Conve
 - **Stack Articles**: Scrapes articles from [stack.convex.dev](https://stack.convex.dev) for a specific author
 - **AI Project Extraction**: Uses Claude to automatically parse video/article descriptions and extract GitHub repos and demo links into project entries
 - **Convex Code Contributions**: Fetches public commits authored by Mike in the open source Convex backend repo
-- **Admin Dashboard**: Authenticated backend for content moderation (marking videos as mine/not mine, hiding projects)
+- **Automatic Video Sorting**: Jev, TypeSafe's decision model, decides whether each new Convex channel video is Mike's, using his recent decisions and YouTube upload settings as examples
+- **Admin Dashboard**: Authenticated backend for content moderation (fixing or making mine/not mine calls, hiding projects)
 - **Automated Refresh**: Hourly cron jobs keep content up to date
 
 ## Tech Stack
@@ -104,7 +105,7 @@ bun test --run       # Run tests once
 ## How It Works
 
 1. **Content Fetching**: Cron jobs trigger `youtube:refresh` and `stack:refresh` hourly
-2. **Video Moderation**: New videos start as "undecided" - admin marks them as "mine" or "notMine"
+2. **Video Moderation**: New videos start as "undecided". [Jev](https://docs.typesafe.ai/introduction), via the Convex AI Gateway, marks the ones it is at least 90% sure about as "mine" or "notMine" and the moderation email lists what it did. Anything it isn't sure about waits for the admin (see [docs/ownership-backtest.md](docs/ownership-backtest.md))
 3. **Project Extraction**: When content is marked as "mine", Claude analyzes the description to extract GitHub/demo links
 4. **Code Contributions**: A daily GitHub refresh stores public Convex backend commits authored by Mike
 5. **Public Display**: Only "mine" videos and all articles are shown publicly, with their extracted projects and code contributions

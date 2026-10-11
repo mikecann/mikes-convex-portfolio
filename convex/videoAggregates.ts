@@ -96,6 +96,32 @@ export async function replaceVideoAggregates(
   // If both not "mine", do nothing
 }
 
+// Ownership changes used to skip the aggregates, so some "mine" videos are missing from
+// them. These tolerant variants don't throw when a video is (or isn't) already there.
+export async function syncVideoAggregatesAfterOwnershipChange(
+  ctx: MutationCtx,
+  oldDoc: Doc<"videos">,
+  newDoc: Doc<"videos">
+) {
+  const wasVisible = shouldIncludeInAggregates(oldDoc);
+  const isVisible = shouldIncludeInAggregates(newDoc);
+  if (wasVisible === isVisible) return;
+
+  if (isVisible) {
+    await Promise.all([
+      viewsAggregate.insertIfDoesNotExist(ctx, newDoc),
+      likesAggregate.insertIfDoesNotExist(ctx, newDoc),
+      commentsAggregate.insertIfDoesNotExist(ctx, newDoc),
+    ]);
+  } else {
+    await Promise.all([
+      viewsAggregate.deleteIfExists(ctx, oldDoc),
+      likesAggregate.deleteIfExists(ctx, oldDoc),
+      commentsAggregate.deleteIfExists(ctx, oldDoc),
+    ]);
+  }
+}
+
 // Helper to delete a video from all aggregates
 export async function deleteVideoAggregates(
   ctx: MutationCtx,
