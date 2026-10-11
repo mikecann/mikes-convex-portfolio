@@ -52,7 +52,7 @@ This is a content aggregation app built with **React + Vite** (frontend) and **C
 5. **Ownership** (`convex/ownership.ts`, `convex/lib/ownershipJudge.ts`):
    - After a YouTube refresh finds new videos, `ownership:judgeVideos` asks Jev (TypeSafe's decision model, via the Convex AI Gateway) whether each is Mike's
    - Jev only decides at 90%+ confidence; otherwise the video stays "undecided" for Mike. The moderation email then lists what Jev did
-   - All ownership changes go through `setVideoOwnership` in `convex/model/videos.ts`, which keeps the stats aggregates in sync
+   - Admin and Jev ownership changes go through `setVideoOwnership` in `convex/model/videos.ts`, which keeps the stats aggregates in sync and removes a video's projects when it stops being "mine" (the old `migrateIsHiddenToIsMikes` migrations still patch directly)
    - Backtest results and why upload settings matter: `docs/ownership-backtest.md`
 
 6. **Admin** (`convex/admin.ts`):
@@ -80,7 +80,8 @@ This is a content aggregation app built with **React + Vite** (frontend) and **C
 Three tables in `convex/schema.ts`:
 - `videos` - indexed by `youtubeId`, `publishedAt`, and `isMikes`
   - `isMikes` field: "undecided" (new videos), "mine" (visible), or "notMine" (hidden)
-  - `ownershipDecidedBy` ("mike" or "jev", missing means Mike) and `jevProbabilityMine` record who sorted it
+  - `ownershipDecidedBy`: who sorted it, "mike" or "jev". Missing on undecided videos, and on videos Mike sorted before Jev existed
+  - `jevProbabilityMine`: Jev's probability that the video is Mike's, kept even when it was too unsure to decide
   - Only videos with `isMikes === "mine"` are shown publicly
 - `articles` - indexed by `slug` and `publishedAt` (always visible, from mike-cann endpoint)
 - `projects` - indexed by `name`, `sourceType`, `sourceId`, `sourceUrl`, and `normalizedName`

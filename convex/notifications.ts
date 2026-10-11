@@ -133,7 +133,7 @@ function generateModerationEmailHtml(videos: VideoForNotification[]): string {
                     ${
                       waiting > 0
                         ? "Jev wasn't sure about the ones in yellow, so they're waiting for you in the admin panel."
-                        : "Jev was sure about all of these, so there's nothing to do unless it got one wrong."
+                        : "Nothing is waiting for you, so there's nothing to do unless Jev got one wrong."
                     }
                   </p>
                 </td>

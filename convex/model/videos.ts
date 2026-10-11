@@ -7,6 +7,7 @@ import {
   deleteVideoAggregates,
   syncVideoAggregatesAfterOwnershipChange,
 } from "../videoAggregates";
+import { deleteProjectsBySourceId } from "./projects";
 
 export interface UpsertVideoResult {
   id: Id<"videos">;
@@ -112,6 +113,11 @@ export async function setVideoOwnership(
     await ctx.scheduler.runAfter(0, internal.youtube.extractProjectsForVideo, {
       youtubeId: video.youtubeId,
     });
+  }
+  // e.g. Mike correcting a wrong "mine" from Jev. A project merged with another source
+  // comes back when that source next refreshes.
+  if (video.isMikes === "mine" && isMikes !== "mine") {
+    await deleteProjectsBySourceId(ctx, video.youtubeId);
   }
   return { becameMine };
 }

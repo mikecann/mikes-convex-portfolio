@@ -36,8 +36,9 @@ export function describeVerdict(video: VideoForNotification): string {
 
 export function moderationSubject(videos: VideoForNotification[]): string {
   const waiting = videos.filter(needsMike).length;
+  const sortedByJev = videos.filter((video) => video.ownershipDecidedBy === "jev").length;
   const plural = (n: number) => `${n} new video${n === 1 ? "" : "s"}`;
-  return waiting > 0
-    ? `${plural(waiting)} need${waiting === 1 ? "s" : ""} you`
-    : `Jev sorted ${plural(videos.length)}`;
+  if (waiting > 0) return `${plural(waiting)} need${waiting === 1 ? "s" : ""} you`;
+  if (sortedByJev === videos.length) return `Jev sorted ${plural(videos.length)}`;
+  return `${plural(videos.length)}, nothing needs you`;
 }

@@ -2,7 +2,7 @@
 
 New Convex channel videos are sorted into "mine" or "not mine" by [Jev](https://docs.typesafe.ai/introduction), TypeSafe's decision model, through the Convex AI Gateway (`convex/ownership.ts`, `convex/lib/ownershipJudge.ts`). Jev only decides when it is at least 90% sure. Anything else stays "undecided" and lands in the moderation email.
 
-Backtested in October 2026 against Mike's 411 existing decisions (196 mine, 215 not mine, 2022 to 2026). Each video was judged using only the 25 latest "mine" and 25 latest "not mine" videos published before it as examples, which is what Jev sees in production.
+Backtested in October 2026 against Mike's 411 existing decisions (196 mine, 215 not mine, 2022 to 2026). Each video was judged using only the 25 latest "mine" and 25 latest "not mine" videos published before it as examples. That matches what Jev sees for a brand new video in production, where the examples are Mike's own 25 latest decisions of each kind (Jev's calls are left out). Asking Jev about an older undecided video from the admin uses the same latest examples, which can include videos published after it.
 
 | Version | Accuracy | Auto-decided at 90% | Wrong at 90% |
 | --- | --- | --- | --- |

@@ -151,10 +151,9 @@ export const askJevAboutUndecided = mutation({
   args: { token: v.string() },
   handler: async (ctx, { token }) => {
     await requireAuth(ctx, token);
-    const undecided = await ctx.db
-      .query("videos")
-      .withIndex("by_isMikes", (q) => q.eq("isMikes", "undecided"))
-      .collect();
+    const undecided = (await ctx.db.query("videos").collect()).filter(
+      (video) => (video.isMikes ?? "undecided") === "undecided"
+    );
     if (undecided.length > 0) {
       await ctx.scheduler.runAfter(0, internal.ownership.judgeVideos, {
         videoIds: undecided.map((video) => video._id),

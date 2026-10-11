@@ -168,6 +168,9 @@ function RefreshButtons({ token }: { token: string }) {
       const result = await askJevAboutUndecided({ token });
       setEmailResult(result.message);
       setTimeout(() => setEmailResult(null), 5000);
+    } catch (error) {
+      setEmailResult(error instanceof Error ? error.message : "Failed to ask Jev");
+      setTimeout(() => setEmailResult(null), 5000);
     } finally {
       setJevLoading(false);
     }

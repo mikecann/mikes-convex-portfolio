@@ -121,11 +121,16 @@ export interface JevChoiceAnswer {
 
 // Probability that the video is Mike's. Jev's rounded probabilities can disagree with
 // its own pick, so trust the probabilities when present (same as the Magic Jev Ball).
+// Without any score, return 0.5 so the video is left for Mike.
 export function probabilityMine(answer: JevChoiceAnswer): number {
   if (answer.probabilities && typeof answer.probabilities.mine === "number") {
     return answer.probabilities.mine;
   }
-  return answer.choice === "mine" ? 1 : 0;
+  if (typeof answer.confidence === "number") {
+    if (answer.choice === "mine") return answer.confidence;
+    if (answer.choice === "notMine") return 1 - answer.confidence;
+  }
+  return 0.5;
 }
 
 export function decideOwnership(

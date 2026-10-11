@@ -22,7 +22,8 @@ import {
 const isUndecided = (video: Doc<"videos">) =>
   (video.isMikes ?? "undecided") === "undecided";
 
-// The latest sorted videos of each kind, which Jev uses as examples.
+// Mike's latest decisions of each kind, which Jev uses as examples. Jev's own calls are
+// left out so a mistake can't feed into later ones.
 export const recentDecisions = internalQuery({
   args: {},
   handler: async (ctx): Promise<OwnershipExample[]> => {
@@ -32,6 +33,7 @@ export const recentDecisions = internalQuery({
         .withIndex("by_isMikes", (q) => q.eq("isMikes", isMikes))
         .collect();
       return videos
+        .filter((video) => video.ownershipDecidedBy !== "jev")
         .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
         .slice(0, EXAMPLES_PER_SIDE)
         .map((video) => ({

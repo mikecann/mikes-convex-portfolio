@@ -56,8 +56,12 @@ describe("deciding ownership from Jev's probability", () => {
 
   it("trusts Jev's probabilities over its pick when they disagree", () => {
     expect(probabilityMine({ choice: "notMine", probabilities: { mine: 0.6, notMine: 0.4 } })).toBe(0.6);
-    expect(probabilityMine({ choice: "mine" })).toBe(1);
-    expect(probabilityMine({ choice: "notMine" })).toBe(0);
+  });
+
+  it("falls back to Jev's confidence, and leaves the video for Mike without any score", () => {
+    expect(probabilityMine({ choice: "mine", confidence: 0.7 })).toBe(0.7);
+    expect(probabilityMine({ choice: "notMine", confidence: 0.95 })).toBeCloseTo(0.05);
+    expect(decideOwnership(probabilityMine({ choice: "mine" }))).toBe("undecided");
   });
 });
 
@@ -146,6 +150,22 @@ describe("applying Jev's verdict", () => {
   });
 });
 
+describe("Jev's examples", () => {
+  it("only uses videos Mike sorted himself, not Jev's own calls", async () => {
+    const t = setup();
+    await t.run(async (ctx) => {
+      const base = { description: "", thumbnailUrl: "", publishedAt: "2026-10-01T00:00:00Z" };
+      await ctx.db.insert("videos", { ...base, youtubeId: "a", title: "Sorted by Mike", isMikes: "mine", ownershipDecidedBy: "mike" });
+      await ctx.db.insert("videos", { ...base, youtubeId: "b", title: "Sorted before Jev existed", isMikes: "notMine" });
+      await ctx.db.insert("videos", { ...base, youtubeId: "c", title: "Sorted by Jev", isMikes: "mine", ownershipDecidedBy: "jev" });
+    });
+
+    const examples = await t.query(internal.ownership.recentDecisions, {});
+
+    expect(examples.map((e) => e.title).sort()).toEqual(["Sorted before Jev existed", "Sorted by Mike"]);
+  });
+});
+
 describe("Mike sorting a video in the admin", () => {
   async function adminToken(t: ReturnType<typeof setup>) {
     const token = "test-token";
@@ -166,6 +186,26 @@ describe("Mike sorting a video in the admin", () => {
 
     await t.mutation(api.admin.setVideoIsMikes, { token, id, isMikes: "notMine" });
     expect((await t.query(api.videos.stats)).videoCount).toBe(0);
+  });
+
+  it("removes the video's projects when Mike says it isn't his after all", async () => {
+    const t = setup();
+    const token = await adminToken(t);
+    const id = await addUndecidedVideo(t);
+    await t.mutation(internal.ownership.applyJevVerdict, { id, probabilityMine: 0.95 });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("projects", {
+        name: "Someone else's project",
+        sourceUrl: "https://github.com/someone/project",
+        sourceType: "video",
+        sourceId: "abc123",
+        extractedAt: "2026-10-01T00:00:00Z",
+      });
+    });
+
+    await t.mutation(api.admin.setVideoIsMikes, { token, id, isMikes: "notMine" });
+
+    expect(await t.query(api.projects.list)).toHaveLength(0);
   });
 
   it("can unmark a video that is missing from the stats without erroring", async () => {
@@ -211,5 +251,7 @@ describe("the moderation email", () => {
     expect(moderationSubject([sorted, sorted])).toBe("Jev sorted 2 new videos");
     expect(moderationSubject([sorted, waiting])).toBe("1 new video needs you");
     expect(moderationSubject([waiting, waiting])).toBe("2 new videos need you");
+    const sortedByMike = { ...base, isMikes: "notMine" as const, ownershipDecidedBy: "mike" as const };
+    expect(moderationSubject([sorted, sortedByMike])).toBe("2 new videos, nothing needs you");
   });
 });
