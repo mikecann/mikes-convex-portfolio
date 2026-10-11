@@ -36,6 +36,9 @@ interface YouTubeVideosResponse {
       title: string;
       description: string;
       publishedAt: string;
+      categoryId?: string;
+      defaultLanguage?: string;
+      defaultAudioLanguage?: string;
       thumbnails: {
         high?: { url: string };
         medium?: { url: string };
@@ -50,7 +53,19 @@ interface YouTubeVideosResponse {
     contentDetails?: {
       duration?: string;
     };
+    // Only present on videos that were live streams.
+    liveStreamingDetails?: object;
   }>;
+}
+
+// Upload settings Jev uses to tell who uploaded a video, see lib/ownershipJudge.ts.
+function uploadSettings(video: YouTubeVideosResponse["items"][number]) {
+  return {
+    categoryId: video.snippet.categoryId,
+    defaultLanguage: video.snippet.defaultLanguage,
+    defaultAudioLanguage: video.snippet.defaultAudioLanguage,
+    wasLiveStream: video.liveStreamingDetails !== undefined,
+  };
 }
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
@@ -118,7 +133,7 @@ export const refreshAll = internalAction({
       for (let i = 0; i < videoIds.length; i += 50) {
         const batch = videoIds.slice(i, i + 50);
         const videosResponse = await fetch(
-          `${YOUTUBE_API_BASE}/videos?part=snippet,statistics,contentDetails&id=${batch.join(",")}&key=${apiKey}`
+          `${YOUTUBE_API_BASE}/videos?part=snippet,statistics,contentDetails,liveStreamingDetails&id=${batch.join(",")}&key=${apiKey}`
         );
         const videosData: YouTubeVideosResponse = await videosResponse.json();
 
@@ -161,6 +176,7 @@ export const refreshAll = internalAction({
             ? parseInt(video.statistics.commentCount, 10)
             : undefined,
           duration: video.contentDetails?.duration,
+          ...uploadSettings(video),
         });
 
         // Track new videos for notification
@@ -235,10 +251,11 @@ export const refreshAll = internalAction({
         processedCount++;
       }
 
-      // Send notification if there are new videos needing moderation
+      // Jev sorts new videos it is sure about, then emails Mike what it did
       if (newVideoIds.length > 0) {
-        await ctx.runAction(internal.notifications.sendModerationNotification, {
-          newVideoIds,
+        await ctx.scheduler.runAfter(0, internal.ownership.judgeVideos, {
+          videoIds: newVideoIds,
+          notify: true,
         });
       }
 
@@ -301,7 +318,7 @@ export const refreshLatest = internalAction({
 
       // Step 3: Get full video details
       const videosResponse = await fetch(
-        `${YOUTUBE_API_BASE}/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(",")}&key=${apiKey}`
+        `${YOUTUBE_API_BASE}/videos?part=snippet,statistics,contentDetails,liveStreamingDetails&id=${videoIds.join(",")}&key=${apiKey}`
       );
       const videosData: YouTubeVideosResponse = await videosResponse.json();
 
@@ -339,6 +356,7 @@ export const refreshLatest = internalAction({
             ? parseInt(video.statistics.commentCount, 10)
             : undefined,
           duration: video.contentDetails?.duration,
+          ...uploadSettings(video),
         });
 
         // Track new videos for notification
@@ -413,10 +431,11 @@ export const refreshLatest = internalAction({
         processedCount++;
       }
 
-      // Send notification if there are new videos needing moderation
+      // Jev sorts new videos it is sure about, then emails Mike what it did
       if (newVideoIds.length > 0) {
-        await ctx.runAction(internal.notifications.sendModerationNotification, {
-          newVideoIds,
+        await ctx.scheduler.runAfter(0, internal.ownership.judgeVideos, {
+          videoIds: newVideoIds,
+          notify: true,
         });
       }
 

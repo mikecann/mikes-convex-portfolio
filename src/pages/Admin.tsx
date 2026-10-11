@@ -116,12 +116,14 @@ function RefreshButtons({ token }: { token: string }) {
   const triggerXRefresh = useMutation(api.admin.triggerXRefresh);
   const triggerGitHubRefresh = useMutation(api.admin.triggerGitHubRefresh);
   const sendTestEmail = useAction(api.admin.sendTestEmail);
+  const askJevAboutUndecided = useMutation(api.admin.askJevAboutUndecided);
   const [youtubeLoading, setYoutubeLoading] = useState(false);
   const [stackLoading, setStackLoading] = useState(false);
   const [xLoading, setXLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailResult, setEmailResult] = useState<string | null>(null);
+  const [jevLoading, setJevLoading] = useState(false);
 
   const handleYouTubeRefresh = async () => {
     setYoutubeLoading(true);
@@ -156,6 +158,21 @@ function RefreshButtons({ token }: { token: string }) {
       await triggerGitHubRefresh({ token });
     } finally {
       setGithubLoading(false);
+    }
+  };
+
+  const handleAskJev = async () => {
+    setJevLoading(true);
+    setEmailResult(null);
+    try {
+      const result = await askJevAboutUndecided({ token });
+      setEmailResult(result.message);
+      setTimeout(() => setEmailResult(null), 5000);
+    } catch (error) {
+      setEmailResult(error instanceof Error ? error.message : "Failed to ask Jev");
+      setTimeout(() => setEmailResult(null), 5000);
+    } finally {
+      setJevLoading(false);
     }
   };
 
@@ -236,6 +253,18 @@ function RefreshButtons({ token }: { token: string }) {
             <span>&#9993;</span>
           )}
           Test Email
+        </button>
+        <button
+          onClick={handleAskJev}
+          disabled={jevLoading}
+          className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 disabled:bg-sky-800 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
+          {jevLoading ? (
+            <span className="animate-spin">&#9696;</span>
+          ) : (
+            <span>&#10024;</span>
+          )}
+          Ask Jev About Undecided
         </button>
       </div>
       {emailResult && (
@@ -367,7 +396,9 @@ function ContentManager({
     const currentContent = localStore.getQuery(api.admin.getAllContent, { token });
     if (currentContent) {
       const updatedVideos = currentContent.videos.map((v) =>
-        v._id === args.id ? { ...v, isMikes: args.isMikes } : v
+        v._id === args.id
+          ? { ...v, isMikes: args.isMikes, ownershipDecidedBy: "mike" as const }
+          : v
       );
       localStore.setQuery(api.admin.getAllContent, { token }, {
         ...currentContent,
@@ -398,6 +429,9 @@ function ContentManager({
       _creationTime: number;
       title?: string;
       isMikes?: "undecided" | "mine" | "notMine";
+      ownershipDecidedBy?: "mike" | "jev";
+      jevProbabilityMine?: number;
+      thumbnailCapProbability?: number;
       thumbnailUrl?: string;
       publishedAt: string;
     };
@@ -568,12 +602,21 @@ function VideoCard({
     _id: string;
     title?: string;
     isMikes?: "undecided" | "mine" | "notMine";
+    ownershipDecidedBy?: "mike" | "jev";
+    jevProbabilityMine?: number;
+    thumbnailCapProbability?: number;
     thumbnailUrl?: string;
   };
   onSetOwnership: (id: string, isMikes: "mine" | "notMine") => void;
 }) {
   const title = item.title || "Untitled";
   const status = item.isMikes ?? "undecided";
+  const jevNote = describeJevNote(
+    status,
+    item.ownershipDecidedBy,
+    item.jevProbabilityMine,
+    item.thumbnailCapProbability
+  );
 
   const statusColors = {
     undecided: "bg-yellow-600",
@@ -606,6 +649,7 @@ function VideoCard({
             className={`absolute right-2 top-2 rounded px-2 py-1 text-xs font-medium text-white ${statusColors[status]}`}
           >
             {statusLabels[status]}
+            {item.ownershipDecidedBy === "jev" && " · Jev"}
           </div>
         </div>
       ) : (
@@ -621,6 +665,7 @@ function VideoCard({
         >
           {title}
         </h3>
+        {jevNote && <p className="text-xs text-sky-400">{jevNote}</p>}
         <div className="flex gap-2">
           <button
             onClick={() => onSetOwnership(item._id, "mine")}
@@ -648,6 +693,22 @@ function VideoCard({
       </div>
     </div>
   );
+}
+
+function describeJevNote(
+  status: "undecided" | "mine" | "notMine",
+  decidedBy?: "mike" | "jev",
+  pMine?: number,
+  pCap?: number
+): string | null {
+  if (pMine === undefined) return null;
+  const percent = (p: number) => `${Math.round(p * 100)}%`;
+  if (status === "undecided") return `Jev wasn't sure: ${percent(pMine)} yours`;
+  if (decidedBy !== "jev") return null;
+  if (status === "notMine") return `Jev is ${percent(1 - pMine)} sure it's not yours`;
+  return pMine < 0.9 && pCap !== undefined
+    ? `Jev is ${percent(pMine)} sure it's yours, and your cap is on the thumbnail`
+    : `Jev is ${percent(pMine)} sure it's yours`;
 }
 
 function SimpleContentCard({

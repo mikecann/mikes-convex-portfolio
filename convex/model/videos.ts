@@ -1,10 +1,13 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 import {
   insertVideoAggregates,
   replaceVideoAggregates,
   deleteVideoAggregates,
+  syncVideoAggregatesAfterOwnershipChange,
 } from "../videoAggregates";
+import { deleteProjectsBySourceId } from "./projects";
 
 export interface UpsertVideoResult {
   id: Id<"videos">;
@@ -21,6 +24,10 @@ export interface VideoData {
   likeCount?: number;
   commentCount?: number;
   duration?: string;
+  categoryId?: string;
+  defaultLanguage?: string;
+  defaultAudioLanguage?: string;
+  wasLiveStream?: boolean;
 }
 
 export async function getVideoByYoutubeId(ctx: QueryCtx, youtubeId: string) {
@@ -85,4 +92,32 @@ export async function deleteAllVideos(ctx: MutationCtx) {
     await deleteVideoAggregates(ctx, video);
     await ctx.db.delete(video._id);
   }
+}
+
+// The one place a video's ownership changes, whether Mike or Jev decided it.
+// Keeps the stats aggregates in sync and extracts projects for newly "mine" videos.
+export async function setVideoOwnership(
+  ctx: MutationCtx,
+  video: Doc<"videos">,
+  isMikes: "mine" | "notMine",
+  decidedBy: "mike" | "jev"
+) {
+  await ctx.db.patch(video._id, { isMikes, ownershipDecidedBy: decidedBy });
+  const updated = await ctx.db.get(video._id);
+  if (updated) {
+    await syncVideoAggregatesAfterOwnershipChange(ctx, video, updated);
+  }
+
+  const becameMine = isMikes === "mine" && video.isMikes !== "mine";
+  if (becameMine) {
+    await ctx.scheduler.runAfter(0, internal.youtube.extractProjectsForVideo, {
+      youtubeId: video.youtubeId,
+    });
+  }
+  // e.g. Mike correcting a wrong "mine" from Jev. A project merged with another source
+  // comes back when that source next refreshes.
+  if (video.isMikes === "mine" && isMikes !== "mine") {
+    await deleteProjectsBySourceId(ctx, video.youtubeId);
+  }
+  return { becameMine };
 }
