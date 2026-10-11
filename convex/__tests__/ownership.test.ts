@@ -23,16 +23,19 @@ function setup() {
   return t;
 }
 
+// How a YouTube refresh stores a new video: undecided, so not in the stats yet.
 async function addUndecidedVideo(t: ReturnType<typeof setup>, youtubeId = "abc123") {
-  const { id } = await t.mutation(api.videos.add, {
-    youtubeId,
-    title: "Mike's AI Tip: use more than one AI review bot",
-    description: "A short tip",
-    thumbnailUrl: "https://example.com/thumb.jpg",
-    publishedAt: "2026-10-01T10:00:00Z",
-    viewCount: 500,
-  });
-  return id;
+  return await t.run(async (ctx) =>
+    ctx.db.insert("videos", {
+      youtubeId,
+      title: "Mike's AI Tip: use more than one AI review bot",
+      description: "A short tip",
+      thumbnailUrl: "https://example.com/thumb.jpg",
+      publishedAt: "2026-10-01T10:00:00Z",
+      viewCount: 500,
+      isMikes: "undecided",
+    })
+  );
 }
 
 const getVideo = (t: ReturnType<typeof setup>, id: Id<"videos">) =>
