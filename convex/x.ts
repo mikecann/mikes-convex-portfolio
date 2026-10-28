@@ -1,6 +1,7 @@
 "use node";
 
 import { internalAction } from "./_generated/server";
+import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
 interface XTweetResponse {
@@ -17,6 +18,7 @@ interface XTweetResponse {
     attachments?: {
       media_keys?: string[];
     };
+    referenced_tweets?: Array<{ type: string; id: string }>;
   }>;
   includes?: {
     media?: Array<{
@@ -37,8 +39,9 @@ const X_API_BASE = "https://api.twitter.com/2";
 
 // Refresh tweets from X API
 export const refresh = internalAction({
-  args: {},
-  handler: async (ctx) => {
+  // maxResults is only for a one-off backfill by hand; the cron uses the default.
+  args: { maxResults: v.optional(v.number()) },
+  handler: async (ctx, { maxResults = 20 }) => {
     const bearerToken = process.env.X_BEARER_TOKEN;
     const userId = process.env.X_USER_ID;
 
@@ -51,7 +54,7 @@ export const refresh = internalAction({
       // Get user's latest tweets. X bills pay-per-use reads per post returned (up to
       // $0.005 each), so only fetch 20: that covers a day's posting with room to spare,
       // and older tweets are already stored. Raise it once by hand to backfill a gap.
-      const url = `${X_API_BASE}/users/${userId}/tweets?max_results=20&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys&media.fields=url,preview_image_url`;
+      const url = `${X_API_BASE}/users/${userId}/tweets?max_results=${maxResults}&tweet.fields=created_at,public_metrics,attachments,referenced_tweets&expansions=attachments.media_keys&media.fields=url,preview_image_url`;
 
       const response = await fetch(url, {
         headers: {
@@ -109,6 +112,10 @@ export const refresh = internalAction({
           replyCount: tweet.public_metrics?.reply_count,
           likeCount: tweet.public_metrics?.like_count,
           viewCount: tweet.public_metrics?.impression_count,
+          // Thread replies to my own posts don't start with @, so this is the only reliable way
+          // for readers like mikecann.blog to leave them out.
+          isReply:
+            tweet.referenced_tweets?.some((ref) => ref.type === "replied_to") ?? false,
         });
 
         processedCount++;

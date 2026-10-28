@@ -10,6 +10,7 @@ export interface TweetData {
   replyCount?: number;
   likeCount?: number;
   viewCount?: number;
+  isReply?: boolean;
 }
 
 export async function getTweetByTweetId(ctx: QueryCtx, tweetId: string) {
