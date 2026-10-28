@@ -64,6 +64,9 @@ export default defineSchema({
     replyCount: v.optional(v.number()),
     likeCount: v.optional(v.number()),
     viewCount: v.optional(v.number()),
+    // True when the post replies to another post, including my own thread replies. Older
+    // rows synced before this field existed don't have it.
+    isReply: v.optional(v.boolean()),
   })
     .index("by_tweetId", ["tweetId"])
     .index("by_publishedAt", ["publishedAt"]),

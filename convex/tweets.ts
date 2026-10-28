@@ -27,6 +27,7 @@ export const upsert = internalMutation({
     replyCount: v.optional(v.number()),
     likeCount: v.optional(v.number()),
     viewCount: v.optional(v.number()),
+    isReply: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await upsertTweet(ctx, args);
@@ -45,6 +46,7 @@ export const add = internalMutation({
     replyCount: v.optional(v.number()),
     likeCount: v.optional(v.number()),
     viewCount: v.optional(v.number()),
+    isReply: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await upsertTweet(ctx, args);
