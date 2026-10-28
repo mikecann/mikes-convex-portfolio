@@ -48,9 +48,10 @@ export const refresh = internalAction({
     }
 
     try {
-      // Get user's tweets
-      // Using max_results=100 to get as many as possible in one request
-      const url = `${X_API_BASE}/users/${userId}/tweets?max_results=100&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys&media.fields=url,preview_image_url`;
+      // Get user's latest tweets. X bills pay-per-use reads per post returned (up to
+      // $0.005 each), so only fetch 20: that covers a day's posting with room to spare,
+      // and older tweets are already stored. Raise it once by hand to backfill a gap.
+      const url = `${X_API_BASE}/users/${userId}/tweets?max_results=20&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys&media.fields=url,preview_image_url`;
 
       const response = await fetch(url, {
         headers: {
