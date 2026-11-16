@@ -2,6 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mikes-convex-portfolio",
   "compatibility_date": "2024-12-01",
+  // Serves convex.mikecann.blog. That used to go through the blog's Vercel project as a rewrite;
+  // the route sends it straight here instead.
+  "routes": [{ "pattern": "convex.mikecann.blog/*", "zone_name": "mikecann.blog" }],
   "assets": {
     "directory": "dist",
     "not_found_handling": "single-page-application"
