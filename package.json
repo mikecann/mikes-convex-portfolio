@@ -33,7 +33,7 @@
     "concurrently": "^9.1.2",
     "convex-test": "^0.0.61",
     "eslint": "^10",
-    "mikecann-lint": "^0.1.0",
+    "mikecann-lint": "^0.1.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.6.2",
