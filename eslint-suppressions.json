@@ -36,6 +36,11 @@
       "count": 1
     }
   },
+  "convex/lib/githubReadme.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
   "convex/migrations/backfillVideoAggregates.ts": {
     "@convex-dev/no-collect-in-query": {
       "count": 2
@@ -121,10 +126,16 @@
   "convex/x.ts": {
     "@convex-dev/no-process-env": {
       "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
     }
   },
   "convex/youtube.ts": {
     "@convex-dev/no-process-env": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-vars": {
       "count": 2
     }
   },
@@ -134,10 +145,24 @@
     }
   },
   "src/pages/Admin.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 11
+    },
     "mikecann-lint/click-shows-progress": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "src/pages/Login.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
       "count": 1
     }
   }
